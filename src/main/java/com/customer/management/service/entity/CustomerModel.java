@@ -9,6 +9,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * CustomerModel represents the main customer entity mapped to "customers" table.
+ * It stores all essential customer details, including personal info, status,
+ * timestamps, and relationships with addresses and OTPs.
+ */
 @Entity
 @Table(name = "customers")
 @Getter

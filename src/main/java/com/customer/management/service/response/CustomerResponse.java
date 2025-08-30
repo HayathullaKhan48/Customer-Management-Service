@@ -7,7 +7,16 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * CustomerResponse is a Data Transfer Object (DTO) that is used to send
+ * customer-related data back to the client as a response.
+ * This class is designed to keep the API response clean and separate from the
+ * entity classes (database models), making it easier to control what data
+ * is exposed externally.
+ */
 @Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

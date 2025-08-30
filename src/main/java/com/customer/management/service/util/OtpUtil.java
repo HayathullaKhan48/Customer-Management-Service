@@ -2,11 +2,10 @@ package com.customer.management.service.util;
 
 import com.customer.management.service.constant.CustomerConstant;
 import org.springframework.stereotype.Component;
-
 import java.security.SecureRandom;
 
 /**
- * OtpUtil is responsible for generating numeric OTP codes.
+ * Utility class for generating numeric OTPs for customer verification.
  */
 @Component
 public class OtpUtil {
@@ -14,9 +13,11 @@ public class OtpUtil {
     private final SecureRandom random = new SecureRandom();
 
     /**
-     * Generates a numeric OTP of fixed length defined in CustomerConstant.
+     * Generates a numeric OTP.
+     * Uses characters defined in {@link CustomerConstant#OTP_CHARACTERS}
+     * and generates an OTP of length {@link CustomerConstant#OTP_LENGTH}.
      *
-     * @return generated OTP
+     * @return a randomly generated numeric OTP
      */
     public String generateOtp() {
         StringBuilder otp = new StringBuilder(CustomerConstant.OTP_LENGTH);

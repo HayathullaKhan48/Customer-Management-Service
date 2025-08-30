@@ -23,6 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+/**
+ * Implementation of CustomerService.
+ * Handles business logic for customers:
+ * - Create, Read, Update, Delete (soft delete)
+ * - Update Mobile/Email/Password
+ * - OTP activation and validation
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -35,6 +42,12 @@ public class CustomerServiceImpl implements CustomerService {
     private final PasswordUtil passwordUtil;
     private final OtpUtil otpUtil;
 
+    /**
+     * Create a new customer and generate OTP for activation.
+     *
+     * @param request Customer details from a client
+     * @return Saved CustomerResponse object
+     */
     @Override
     public CustomerResponse createCustomer(CustomerRequest request) {
         logger.info("Create request received for mobile: {}", request.getMobileNumber());
@@ -70,6 +83,14 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(saved);
     }
 
+    /**
+     * Get all customers with pagination and sorting.
+     *
+     * @param page   Page number (0-based)
+     * @param size   Number of records per page
+     * @param sortBy Field name to sort by (descending)
+     * @return Paginated list of customers
+     */
     @Override
     public Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy) {
         logger.info("Fetching customers page={} size={} sortBy={}", page, size, sortBy);
@@ -78,13 +99,25 @@ public class CustomerServiceImpl implements CustomerService {
         return pageData.map(mapper::toCustomerResponse);
     }
 
+    /**
+     * Get customer by ID.
+     *
+     * @param customerId ID of the customer
+     * @return CustomerResponse object
+     */
     @Override
     public CustomerResponse getCustomerById(Long customerId) {
-        CustomerModel c = customerRepository.findById(customerId)
+        CustomerModel c = customerRepository.findByCustomerId(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + customerId));
         return mapper.toCustomerResponse(c);
     }
 
+    /**
+     * Update customer details.
+     *
+     * @param request Updated customer data
+     * @return Updated CustomerResponse object
+     */
     @Override
     public CustomerResponse updateCustomer(CustomerRequest request) {
         CustomerModel model = customerRepository.findByMobileNumber(request.getMobileNumber())
@@ -101,9 +134,9 @@ public class CustomerServiceImpl implements CustomerService {
         model.setUpdatedDate(LocalDateTime.now());
         if (request.getAddresses() != null) {
             model.getAddress().clear();
-            request.getAddresses().forEach(addr -> {
-                addr.setCustomer(model);
-                model.getAddress().add(addr);
+            request.getAddresses().forEach(address -> {
+                address.setCustomer(model);
+                model.getAddress().add(address);
             });
         }
         CustomerModel updated = customerRepository.save(model);
@@ -111,6 +144,13 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(updated);
     }
 
+    /**
+     * Update customer's mobile number.
+     *
+     * @param mobileNumber    Current mobile number
+     * @param newMobileNumber New mobile number to update
+     * @return Updated CustomerResponse object
+     */
     @Override
     public CustomerResponse updateMobileNumber(String mobileNumber, String newMobileNumber) {
         CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
@@ -125,6 +165,13 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(saved);
     }
 
+    /**
+     * Update customer's email address.
+     *
+     * @param mobileNumber Current mobile number
+     * @param newEmail     New email to update
+     * @return Updated CustomerResponse object
+     */
     @Override
     public CustomerResponse updateEmail(String mobileNumber, String newEmail) {
         CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
@@ -139,6 +186,14 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(saved);
     }
 
+
+    /**
+     * Update customer's password.
+     *
+     * @param mobileNumber Current mobile number
+     * @param newPassword  New password to set
+     * @return Updated CustomerResponse object
+     */
     @Override
     public CustomerResponse updatePassword(String mobileNumber, String newPassword) {
         CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
@@ -150,6 +205,14 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(saved);
     }
 
+    /**
+     * Reset password (after verifying confirm password).
+     *
+     * @param mobileNumber    Customer's mobile number
+     * @param newPassword     New password
+     * @param confirmPassword Confirm password to match
+     * @return Updated CustomerResponse object
+     */
     @Override
     public CustomerResponse forgetPassword(String mobileNumber, String newPassword, String confirmPassword) {
         if (!newPassword.equals(confirmPassword)) {
@@ -158,6 +221,12 @@ public class CustomerServiceImpl implements CustomerService {
         return updatePassword(mobileNumber, newPassword);
     }
 
+    /**
+     * Soft delete a customer (mark as INACTIVE).
+     *
+     * @param customerId ID of the customer to delete
+     * @return Updated CustomerResponse object with INACTIVE status
+     */
     @Override
     public CustomerResponse deleteCustomer(Long customerId) {
         CustomerModel model = customerRepository.findById(customerId)
@@ -169,6 +238,13 @@ public class CustomerServiceImpl implements CustomerService {
         return mapper.toCustomerResponse(saved);
     }
 
+    /**
+     * Activate customer by verifying OTP.
+     *
+     * @param mobileNumber Customer's mobile number
+     * @param otp          OTP value for activation
+     * @return Updated CustomerResponse object with ACTIVE status
+     */
     @Override
     public CustomerResponse activateCustomerByOtp(String mobileNumber, String otp) {
         CustomerModel customer = customerRepository.findByMobileNumber(mobileNumber)

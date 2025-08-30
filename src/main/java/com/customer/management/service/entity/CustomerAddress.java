@@ -4,6 +4,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * CustomerAddress entity represents a customer's address information.
+ * 🔹 Key Points:
+ * - Mapped to table: customer_address
+ * - Each address belongs to a single customer (Many-to-One relation)
+ * - Uses Lombok for boilerplate (getters, setters, constructors, builder)
+ * - Many-to-One mapping with CustomerModel.
+ * - FetchType. LAZY → loads customer only when explicitly accessed.
+ *  - @JsonIgnore → avoids infinite recursion during JSON serialization.
+ */
 @Entity
 @Table(name = "customer_address")
 @Getter

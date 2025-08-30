@@ -7,9 +7,25 @@ import lombok.*;
 
 import java.util.List;
 
+/**
+ * Request DTO for customer data.
+ * Used in POST/PUT/PATCH APIs.
+ * Customer ID (used for update/delete)
+ * First name (required)
+ * Last name (required)
+ * Full name (required)
+ * Age (must be >= 1)
+ * Mobile number (required)
+ * Email address (must be valid)
+ * Password (min 6 characters)
+ * Customer addresses (must not be empty)
+ * Fields used for PATCH requests (updates)
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Builder
 public class CustomerRequest {
 

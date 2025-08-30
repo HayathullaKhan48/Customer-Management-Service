@@ -2,11 +2,10 @@ package com.customer.management.service.util;
 
 import com.customer.management.service.constant.CustomerConstant;
 import org.springframework.stereotype.Component;
-
 import java.security.SecureRandom;
 
 /**
- * CustomerUtil is used for generating random passwords.
+ * Utility class for customer-related operations such as generating random passwords.
  */
 @Component
 public class CustomerUtil {
@@ -14,9 +13,11 @@ public class CustomerUtil {
     private final SecureRandom random = new SecureRandom();
 
     /**
-     * Generates a strong random password using defined characters in CustomerConstant.
+     * Generates a strong random password.
+     * Uses characters defined in {@link CustomerConstant#PASSWORD_CHARACTERS}
+     * and generates a password of length {@link CustomerConstant#PASSWORD_LENGTH}.
      *
-     * @return generated password
+     * @return a randomly generated strong password
      */
     public String generatePassword() {
         StringBuilder password = new StringBuilder(CustomerConstant.PASSWORD_LENGTH);

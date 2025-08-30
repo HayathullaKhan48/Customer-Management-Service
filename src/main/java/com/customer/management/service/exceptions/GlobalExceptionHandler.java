@@ -12,42 +12,47 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Global exception handler for the application.
+ * Handles all custom and general exceptions
+ * and returns proper HTTP status with error message.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CustomerAlreadyExistsException.class)
-    public ResponseEntity<Map<String,String>> handleExists(CustomerAlreadyExistsException ex) {
-        Map<String,String> m = new HashMap<>();
-        m.put("error", ex.getMessage());
-        return new ResponseEntity<>(m, HttpStatus.CONFLICT);
+    public ResponseEntity<Map<String,String>> handleExists(CustomerAlreadyExistsException exception) {
+        Map<String,String> map = new HashMap<>();
+        map.put("error", exception.getMessage());
+        return new ResponseEntity<>(map, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(CustomerNotFoundException.class)
-    public ResponseEntity<Map<String,String>> handleNotFound(CustomerNotFoundException ex) {
-        Map<String,String> m = new HashMap<>();
-        m.put("error", ex.getMessage());
-        return new ResponseEntity<>(m, HttpStatus.NOT_FOUND);
+    public ResponseEntity<Map<String,String>> handleNotFound(CustomerNotFoundException exception) {
+        Map<String,String> map = new HashMap<>();
+        map.put("error", exception.getMessage());
+        return new ResponseEntity<>(map, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(InvalidOtpException.class)
-    public ResponseEntity<Map<String,String>> handleOtp(InvalidOtpException ex) {
-        Map<String,String> m = new HashMap<>();
-        m.put("error", ex.getMessage());
-        return new ResponseEntity<>(m, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<Map<String,String>> handleOtp(InvalidOtpException exception) {
+        Map<String,String> map = new HashMap<>();
+        map.put("error", exception.getMessage());
+        return new ResponseEntity<>(map, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String,String>> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String,String>> handleValidation(MethodArgumentNotValidException exception) {
         Map<String,String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(fe -> errors.put(fe.getField(), fe.getDefaultMessage()));
+        exception.getBindingResult().getFieldErrors()
+                .forEach(fieldError -> errors.put(fieldError.getField(), fieldError.getDefaultMessage()));
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String,String>> handleAll(Exception ex) {
-        Map<String,String> m = new HashMap<>();
-        m.put("error", ex.getMessage());
-        return new ResponseEntity<>(m, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<Map<String,String>> handleAll(Exception exception) {
+        Map<String,String> map = new HashMap<>();
+        map.put("error", exception.getMessage());
+        return new ResponseEntity<>(map, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

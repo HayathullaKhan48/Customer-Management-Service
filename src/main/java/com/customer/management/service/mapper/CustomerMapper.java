@@ -10,9 +10,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Mapper class to convert between CustomerRequest, CustomerModel, and CustomerResponse.
+ */
 @Component
 public class CustomerMapper {
 
+    /**
+     * Converts CustomerRequest to CustomerModel and sets addresses with relation.
+     */
     public CustomerModel toCustomerModel(CustomerRequest request) {
         CustomerModel customer = CustomerModel.builder()
                 .firstName(request.getFirstName())
@@ -35,6 +41,9 @@ public class CustomerMapper {
         return customer;
     }
 
+    /**
+     * Converts CustomerModel to CustomerResponse.
+     */
     public CustomerResponse toCustomerResponse(CustomerModel CustomerModel) {
         return CustomerResponse.builder()
                 .customerId(CustomerModel.getCustomerId())
