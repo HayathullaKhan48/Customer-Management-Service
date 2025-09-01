@@ -6,7 +6,7 @@ import lombok.*;
 
 /**
  * CustomerAddress entity represents a customer's address information.
- * 🔹 Key Points:
+ *  Key Points:
  * - Mapped to table: customer_address
  * - Each address belongs to a single customer (Many-to-One relation)
  * - Uses Lombok for boilerplate (getters, setters, constructors, builder)
