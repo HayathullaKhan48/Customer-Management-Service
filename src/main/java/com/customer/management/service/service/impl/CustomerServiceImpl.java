@@ -62,7 +62,7 @@ public class CustomerServiceImpl implements CustomerService {
             throw new CustomerAlreadyExistsException("Full name already exists");
         }
         CustomerModel model = mapper.toCustomerModel(request);
-        model.setPassword(passwordUtil.encode(request.getPassword()));
+        model.setPassword(passwordUtil.encodePassword(request.getPassword()));
         model.setStatus(CustomerStatus.INACTIVE);
         model.setCreatedDate(LocalDateTime.now());
         model.setUpdatedDate(LocalDateTime.now());
@@ -129,7 +129,7 @@ public class CustomerServiceImpl implements CustomerService {
         model.setAge(request.getAge());
         model.setEmailAddress(request.getEmailAddress());
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            model.setPassword(passwordUtil.encode(request.getPassword()));
+            model.setPassword(passwordUtil.encodePassword(request.getPassword()));
         }
         model.setUpdatedDate(LocalDateTime.now());
         if (request.getAddresses() != null) {
@@ -198,7 +198,7 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerResponse updatePassword(String mobileNumber, String newPassword) {
         CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found"));
-        model.setPassword(passwordUtil.encode(newPassword));
+        model.setPassword(passwordUtil.encodePassword(newPassword));
         model.setUpdatedDate(LocalDateTime.now());
         CustomerModel saved = customerRepository.save(model);
         logger.info("Password changed for customerId={}", saved.getCustomerId());

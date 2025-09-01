@@ -1,34 +1,37 @@
 package com.customer.management.service.util;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+
 /**
- * Utility class for encoding and validating passwords using BCrypt hashing.
+ * PasswordUtil is responsible for encoding passwords
+ * using SHA-256 hashing algorithm without Spring Security.
  */
 @Component
 public class PasswordUtil {
 
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
     /**
-     * Encodes a raw password into a secure hashed format.
-     *
-     * @param raw the raw password to encode
-     * @return the encoded (hashed) password
+     * Encodes a raw password into a secure hashed format using SHA-256.
      */
-    public String encode(String raw) {
-        return encoder.encode(raw);
+    public String encodePassword(String rawPassword) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(rawPassword.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error while hashing password", e);
+        }
     }
 
     /**
-     * Validates a raw password against an encoded password.
-     *
-     * @param raw     the raw password to validate
-     * @param encoded the hashed password to compare against
-     * @return true if the raw password matches the encoded one, false otherwise
+     * Compares raw password with an already hashed password.
      */
-    public boolean matches(String raw, String encoded) {
-        return encoder.matches(raw, encoded);
+    public boolean matches(String rawPassword, String encodedPassword) {
+        String hashed = encodePassword(rawPassword);
+        return hashed.equals(encodedPassword);
     }
 }
