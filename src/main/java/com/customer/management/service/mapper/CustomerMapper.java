@@ -11,13 +11,24 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mapper class to convert between CustomerRequest, CustomerModel, and CustomerResponse.
+ * CustomerMapper is responsible for converting data between different layers:
+ * - Converts CustomerRequest (incoming API payload) into CustomerModel (entity for persistence).
+ * - Converts CustomerModel (database entity) into CustomerResponse (outgoing API response).
+ * This ensures a clean separation between API layer, persistence layer, and business logic.
  */
 @Component
 public class CustomerMapper {
 
     /**
-     * Converts CustomerRequest to CustomerModel and sets addresses with relation.
+     * Converts a CustomerRequest object into a CustomerModel entity.
+     * Steps performed:
+     * - Maps all basic customer fields (first name, last name, email, etc.).
+     * - Sets createdDate and updatedDate with the current timestamp.
+     * - If addresses are provided, maps each address and links it back to the customer
+     *   so that the relationship is properly established before persisting.
+     *
+     * @param request the incoming customer request object from API
+     * @return a fully populated CustomerModel entity ready for persistence
      */
     public CustomerModel toCustomerModel(CustomerRequest request) {
         CustomerModel customer = CustomerModel.builder()
@@ -32,9 +43,9 @@ public class CustomerMapper {
                 .updatedDate(LocalDateTime.now())
                 .build();
         if (request.getAddresses() != null) {
-            List<CustomerAddress> list = request.getAddresses().stream().map(addr -> {
-                addr.setCustomer(customer);
-                return addr;
+            List<CustomerAddress> list = request.getAddresses().stream().map(address -> {
+                address.setCustomer(customer);
+                return address;
             }).collect(Collectors.toList());
             customer.setAddress(list);
         }
@@ -42,7 +53,14 @@ public class CustomerMapper {
     }
 
     /**
-     * Converts CustomerModel to CustomerResponse.
+     * Converts a CustomerModel entity into a CustomerResponse object.
+     *
+     * Steps performed:
+     * - Maps all fields from the entity, including personal details, status, timestamps, and addresses.
+     * - Used for sending a clean and structured response to the client.
+     *
+     * @param CustomerModel the persisted customer entity from database
+     * @return a CustomerResponse object containing customer data for API response
      */
     public CustomerResponse toCustomerResponse(CustomerModel CustomerModel) {
         return CustomerResponse.builder()

@@ -30,7 +30,5 @@ public class CustomerConstant {
      * Private constructor to prevent instantiation.
      * This is a utility class meant only for holding constants.
      * */
-    private CustomerConstant() {
 
-    }
 }

@@ -26,11 +26,9 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CustomerController {
 
-    // Service layer dependency to handle business logic
     private final CustomerService customerService;
 
-    // Logger for tracking API calls and debugging
-    private static final Logger log = LoggerFactory.getLogger(CustomerController.class);
+    private static final Logger logger = LoggerFactory.getLogger(CustomerController.class);
 
     /**
      * Create a new customer.
@@ -40,7 +38,7 @@ public class CustomerController {
      */
     @PostMapping("/create")
     public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest request) {
-        log.info("Received createCustomer request for mobile: {}", request.getMobileNumber());
+        logger.info("Received createCustomer request for mobile: {}", request.getMobileNumber());
         return ResponseEntity.ok(customerService.createCustomer(request));
     }
 
@@ -53,14 +51,13 @@ public class CustomerController {
      * @return Page<CustomerResponse> containing paginated results
      */
     @GetMapping("/customers")
-    public ResponseEntity<Page<CustomerResponse>> allCustomers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdDate") String sortBy) {
+    public ResponseEntity<Page<CustomerResponse>> allCustomers(@RequestParam(defaultValue = "0") int page,
+                                                               @RequestParam(defaultValue = "20") int size,
+                                                               @RequestParam(defaultValue = "createdDate") String sortBy) {
 
-        log.info("Fetching all customers with page={}, size={}, sortBy={}", page, size, sortBy);
-        Page<CustomerResponse> res = customerService.getAllCustomers(page, size, sortBy);
-        return ResponseEntity.ok(res);
+        logger.info("Fetching all customers with page={}, size={}, sortBy={}", page, size, sortBy);
+        Page<CustomerResponse> request = customerService.getAllCustomers(page, size, sortBy);
+        return ResponseEntity.ok(request);
     }
 
     /**
@@ -71,7 +68,7 @@ public class CustomerController {
      */
     @GetMapping("/getById/{customerId}")
     public ResponseEntity<CustomerResponse> getById(@PathVariable Long customerId) {
-        log.info("Fetching customer by ID: {}", customerId);
+        logger.info("Fetching customer by ID: {}", customerId);
         return ResponseEntity.ok(customerService.getCustomerById(customerId));
     }
 
@@ -83,8 +80,9 @@ public class CustomerController {
      * @return updated CustomerResponse
      */
     @PatchMapping("/updateMobile/{mobileNumber}")
-    public ResponseEntity<CustomerResponse> updateMobile(@PathVariable @NotBlank String mobileNumber, @RequestParam @NotBlank String newMobileNumber) {
-        log.info("Updating mobile number for {} to {}", mobileNumber, newMobileNumber);
+    public ResponseEntity<CustomerResponse> updateMobile(@PathVariable @NotBlank String mobileNumber,
+                                                         @RequestParam @NotBlank String newMobileNumber) {
+        logger.info("Updating mobile number for {} to {}", mobileNumber, newMobileNumber);
         return ResponseEntity.ok(customerService.updateMobileNumber(mobileNumber, newMobileNumber));
     }
 
@@ -96,8 +94,9 @@ public class CustomerController {
      * @return updated CustomerResponse
      */
     @PatchMapping("/updateEmail/{mobileNumber}")
-    public ResponseEntity<CustomerResponse> updateEmail(@PathVariable @NotBlank String mobileNumber, @RequestParam @Email String newEmail) {
-        log.info("Updating email for {} to {}", mobileNumber, newEmail);
+    public ResponseEntity<CustomerResponse> updateEmail(@PathVariable @NotBlank String mobileNumber,
+                                                        @RequestParam @Email String newEmail) {
+        logger.info("Updating email for {} to {}", mobileNumber, newEmail);
         return ResponseEntity.ok(customerService.updateEmail(mobileNumber, newEmail));
     }
 
@@ -110,7 +109,7 @@ public class CustomerController {
      */
     @PutMapping("/customersUpdate")
     public ResponseEntity<CustomerResponse> updateFull(@Valid @RequestBody CustomerRequest request) {
-        log.info("Updating full customer details for mobile: {}", request.getMobileNumber());
+        logger.info("Updating full customer details for mobile: {}", request.getMobileNumber());
         return ResponseEntity.ok(customerService.updateCustomer(request));
     }
 
@@ -124,7 +123,7 @@ public class CustomerController {
     @PatchMapping("/customer/changePassword/{mobileNumber}/{newPassword}")
     public ResponseEntity<CustomerResponse> changePassword(@PathVariable @NotBlank String mobileNumber,
                                                            @PathVariable @NotBlank String newPassword) {
-        log.info("Changing password for customer: {}", mobileNumber);
+        logger.info("Changing password for customer: {}", mobileNumber);
         return ResponseEntity.ok(customerService.updatePassword(mobileNumber, newPassword));
     }
 
@@ -141,7 +140,7 @@ public class CustomerController {
     public ResponseEntity<CustomerResponse> forgotPassword(@PathVariable @NotBlank String mobileNumber,
                                                            @PathVariable @NotBlank String newPassword,
                                                            @PathVariable @NotBlank String confirmPassword) {
-        log.info("Processing forgot password for {}", mobileNumber);
+        logger.info("Processing forgot password for {}", mobileNumber);
         return ResponseEntity.ok(customerService.forgetPassword(mobileNumber, newPassword, confirmPassword));
     }
 
@@ -154,7 +153,7 @@ public class CustomerController {
      */
     @DeleteMapping("/deleteCustomer/{customerId}")
     public ResponseEntity<CustomerResponse> deleteCustomer(@PathVariable Long customerId) {
-        log.info("Deleting customer with ID: {}", customerId);
+        logger.info("Deleting customer with ID: {}", customerId);
         return ResponseEntity.ok(customerService.deleteCustomer(customerId));
     }
 
@@ -168,7 +167,7 @@ public class CustomerController {
     @PatchMapping("/activateByOtp/{mobileNumber}/{otpNo}")
     public ResponseEntity<CustomerResponse> activateByOtp(@PathVariable @NotBlank String mobileNumber,
                                                           @PathVariable @NotBlank String otpNo) {
-        log.info("Activating customer {} with OTP {}", mobileNumber, otpNo);
+        logger.info("Activating customer {} with OTP {}", mobileNumber, otpNo);
         return ResponseEntity.ok(customerService.activateCustomerByOtp(mobileNumber, otpNo));
     }
 }
