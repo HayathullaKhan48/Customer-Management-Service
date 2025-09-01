@@ -26,9 +26,5 @@ public class CustomerConstant {
     public static final int PASSWORD_LENGTH = 12;
     public static final String OTP_CHARACTERS = "0123456789";
     public static final int OTP_LENGTH = 6;
-    /**
-     * Private constructor to prevent instantiation.
-     * This is a utility class meant only for holding constants.
-     * */
 
 }
