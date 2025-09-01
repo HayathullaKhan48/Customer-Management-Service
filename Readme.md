@@ -588,18 +588,18 @@ enum
 Class	                              Purpose
 
 CustomerController	               Handles all REST API requests
-CustomerService	                       Service interface for business logic
+CustomerService	                   Service interface for business logic
 CustomerServiceImpl	               Implementation of business logic
-CustomerModel & CustomerAddress	       Entity classes for JPA table mapping
-CustomerRequest	                       DTO for input requests
+CustomerModel & CustomerAddress	   Entity classes for JPA table mapping
+CustomerRequest	                   DTO for input requests
 CustomerResponse	               DTO for output responses
-PasswordUtil	                       Utility for password encryption & validation
-OtpGenerator	                       Generates OTP for customer activation
+PasswordUtil	                   Utility for password encryption & validation
+OtpGenerator	                   Generates OTP for customer activation
 CustomerConstant	               Constant values used across application
 CustomerRepository	               Extends JpaRepository for DB operations
-CustomerAlreadyExistsException	       Custom exception thrown when duplicate customer is found
+CustomerAlreadyExistsException	   Custom exception thrown when duplicate customer is found
 CustomerNotFoundException	       Custom exception thrown when requested customer is not found
-GlobalExceptionHandler	               Handles exceptions globally and returns standardized error responses
+GlobalExceptionHandler	           Handles exceptions globally and returns standardized error responses
 
 ```
 ---
