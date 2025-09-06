@@ -1,7 +1,7 @@
 package com.customer.management.service.response;
 
-import com.customer.management.service.entity.CustomerAddress;
 import com.customer.management.service.enums.CustomerStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -25,6 +25,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CustomerResponse {
     private Long customerId;
     private String firstName;
@@ -36,5 +37,6 @@ public class CustomerResponse {
     private CustomerStatus status;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
-    private List<CustomerAddress> addresses;
+    private List<AddressResponse> addresses;
+    private String otp;
 }

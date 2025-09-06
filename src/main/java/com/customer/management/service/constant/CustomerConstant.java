@@ -27,4 +27,5 @@ public class CustomerConstant {
     public static final String OTP_CHARACTERS = "0123456789";
     public static final int OTP_LENGTH = 6;
 
+
 }

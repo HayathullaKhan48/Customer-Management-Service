@@ -1,19 +1,18 @@
 package com.customer.management.service.service.impl;
 
+import com.customer.management.service.entity.AddressModel;
 import com.customer.management.service.entity.CustomerModel;
-import com.customer.management.service.entity.CustomerOTP;
+import com.customer.management.service.entity.OtpModel;
 import com.customer.management.service.enums.CustomerStatus;
 import com.customer.management.service.exceptions.CustomerAlreadyExistsException;
 import com.customer.management.service.exceptions.CustomerNotFoundException;
-import com.customer.management.service.exceptions.InvalidOtpException;
 import com.customer.management.service.mapper.CustomerMapper;
+import com.customer.management.service.repository.CustomerAddressRepository;
 import com.customer.management.service.repository.CustomerOTPRepository;
 import com.customer.management.service.repository.CustomerRepository;
 import com.customer.management.service.request.CustomerRequest;
 import com.customer.management.service.response.CustomerResponse;
 import com.customer.management.service.service.CustomerService;
-import com.customer.management.service.util.OtpUtil;
-import com.customer.management.service.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +20,20 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.customer.management.service.mapper.CustomerMapper.*;
 
 /**
- * Implementation of CustomerService.
- * Handles business logic for customers:
- * - Create, Read, Update, Delete (soft delete)
- * - Update Mobile/Email/Password
- * - OTP activation and validation
+ * Implementation of {@link CustomerService}.
+ * Handles all business logic related to customers:
+ * - Creating customers and generating OTPs
+ * - Retrieving customers by various identifiers (mobile, email, fullName)
+ * - Updating customer details (mobile, email, password)
+ * - Deleting customers (soft-delete or physical delete)
+ * Annotated with {@link Transactional} to ensure that all database operations
+ * within a method execute as a single transaction.
  */
 @Service
 @RequiredArgsConstructor
@@ -37,16 +42,16 @@ public class CustomerServiceImpl implements CustomerService {
 
     private static final Logger logger = LoggerFactory.getLogger(CustomerServiceImpl.class);
     private final CustomerRepository customerRepository;
+    private final CustomerAddressRepository addressRepository;
     private final CustomerOTPRepository otpRepository;
-    private final CustomerMapper mapper;
-    private final PasswordUtil passwordUtil;
-    private final OtpUtil otpUtil;
 
     /**
-     * Create a new customer and generate OTP for activation.
+     * Creates a new customer, saves related addresses, and generates an OTP.
      *
-     * @param request Customer details from a client
-     * @return Saved CustomerResponse object
+     * @param request Customer details from API request
+     * @return {@link CustomerResponse} containing saved customer details,
+     *         addresses, and OTP value
+     * @throws CustomerAlreadyExistsException if mobile number, email, or full name already exist
      */
     @Override
     public CustomerResponse createCustomer(CustomerRequest request) {
@@ -61,203 +66,245 @@ public class CustomerServiceImpl implements CustomerService {
         if (customerRepository.existsByFullName(request.getFullName())) {
             throw new CustomerAlreadyExistsException("Full name already exists");
         }
-        CustomerModel model = mapper.toCustomerModel(request);
-        model.setPassword(passwordUtil.encodePassword(request.getPassword()));
-        model.setStatus(CustomerStatus.INACTIVE);
-        model.setCreatedDate(LocalDateTime.now());
-        model.setUpdatedDate(LocalDateTime.now());
-        if (model.getAddress() != null && !model.getAddress().isEmpty()) {
-            model.getAddress().forEach(a -> a.setCustomer(model));
-        }
-        CustomerModel saved = customerRepository.save(model);
-        String code = otpUtil.generateOtp();
-        CustomerOTP otp = CustomerOTP.builder()
-                .otpValue(code)
-                .createdDate(LocalDateTime.now())
-                .customer(saved)
-                .build();
-        otpRepository.save(otp);
 
-        logger.info("Customer created (id={} mobile={}) with OTP {}", saved.getCustomerId(), saved.getMobileNumber(), code);
+        CustomerModel model = toCustomerModel(request);
+        CustomerModel savedModel = customerRepository.save(model);
+        logger.info("addresses {} ", request.getAddresses());
+        List<AddressModel> addressModels = new ArrayList<>();
+        request.getAddresses()
+                .forEach(addressRequest -> addressModels.add(
+                        addressRepository.saveAndFlush(requestToAddressMapper(savedModel, addressRequest))));
 
-        return mapper.toCustomerResponse(saved);
+        OtpModel optModel = otpRepository.saveAndFlush(requestToOtpMapper(savedModel));
+
+        logger.info("Customer created (id={} mobile={})", savedModel.getCustomerId(), savedModel.getMobileNumber());
+        return toCustomerResponse(savedModel, addressModels, optModel);
     }
 
     /**
-     * Get all customers with pagination and sorting.
+     * Retrieves all customers with pagination and sorting.
      *
-     * @param page   Page number (0-based)
+     * @param page   Page number (0-based index)
      * @param size   Number of records per page
-     * @param sortBy Field name to sort by (descending)
-     * @return Paginated list of customers
+     * @param sortBy Field to sort results by (descending order)
+     * @return Page of {@link CustomerResponse} objects
      */
     @Override
-    public Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy) {
+    public Page<CustomerResponse> getCustomers(int page, int size, String sortBy) {
         logger.info("Fetching customers page={} size={} sortBy={}", page, size, sortBy);
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
         Page<CustomerModel> pageData = customerRepository.findAll(pageable);
-        return pageData.map(mapper::toCustomerResponse);
+        return pageData.map(CustomerMapper::toCustomerResponse);
     }
 
     /**
-     * Get customer by ID.
+     * Retrieves a customer by their mobile number.
      *
-     * @param customerId ID of the customer
-     * @return CustomerResponse object
+     * @param mobileNumber Unique mobile number of the customer
+     * @return {@link CustomerResponse} containing customer details
+     * @throws CustomerNotFoundException if no customer is found with the given mobile number
      */
     @Override
-    public CustomerResponse getCustomerById(Long customerId) {
-        CustomerModel c = customerRepository.findByCustomerId(customerId)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + customerId));
-        return mapper.toCustomerResponse(c);
+    public CustomerResponse getCustomerByMobileNumber(String mobileNumber) {
+        CustomerModel model = customerRepository.findCustomerByMobileNumber(mobileNumber)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not found with Mobile Number: "+ mobileNumber));
+        return CustomerMapper.toCustomerResponse(model);
     }
 
     /**
-     * Update customer details.
+     * Retrieves a customer by their email address.
      *
-     * @param request Updated customer data
-     * @return Updated CustomerResponse object
+     * @param emailAddress Unique email address of the customer
+     * @return {@link CustomerResponse} containing customer details
+     * @throws CustomerNotFoundException if no customer is found with the given email address
      */
     @Override
-    public CustomerResponse updateCustomer(CustomerRequest request) {
-        CustomerModel model = customerRepository.findByMobileNumber(request.getMobileNumber())
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found with mobile: " + request.getMobileNumber()));
-
-        model.setFirstName(request.getFirstName());
-        model.setLastName(request.getLastName());
-        model.setFullName(request.getFullName());
-        model.setAge(request.getAge());
-        model.setEmailAddress(request.getEmailAddress());
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            model.setPassword(passwordUtil.encodePassword(request.getPassword()));
-        }
-        model.setUpdatedDate(LocalDateTime.now());
-        if (request.getAddresses() != null) {
-            model.getAddress().clear();
-            request.getAddresses().forEach(address -> {
-                address.setCustomer(model);
-                model.getAddress().add(address);
-            });
-        }
-        CustomerModel updated = customerRepository.save(model);
-        logger.info("Customer updated: {}", model.getMobileNumber());
-        return mapper.toCustomerResponse(updated);
+    public CustomerResponse getCustomerByEmailAddress(String emailAddress) {
+        CustomerModel model = customerRepository.findCustomerByEmailAddress(emailAddress)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not found with Email Address: "+ emailAddress));
+        return CustomerMapper.toCustomerResponse(model);
     }
 
     /**
-     * Update customer's mobile number.
+     * Retrieves a customer by their full name.
      *
-     * @param mobileNumber    Current mobile number
+     * @param fullName Full name of the customer
+     * @return {@link CustomerResponse} containing customer details
+     * @throws CustomerNotFoundException if no customer is found with the given full name
+     */
+    @Override
+    public CustomerResponse getCustomerByFullName(String fullName) {
+        CustomerModel model = customerRepository.findCustomerByFullName(fullName)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not found with fullName: "+ fullName));
+        return CustomerMapper.toCustomerResponse(model);
+    }
+
+    /**
+     * Updates the customer's mobile number.
+     *
+     * @param customerId      Unique ID of the customer
      * @param newMobileNumber New mobile number to update
-     * @return Updated CustomerResponse object
+     * @return {@link CustomerResponse} with updated mobile number
+     * @throws CustomerNotFoundException if no customer is found with the given ID
      */
     @Override
-    public CustomerResponse updateMobileNumber(String mobileNumber, String newMobileNumber) {
-        CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found with mobile: " + mobileNumber));
-        if (customerRepository.existsByMobileNumber(newMobileNumber)) {
-            throw new CustomerAlreadyExistsException("New mobile number already exists");
-        }
+    public CustomerResponse updateCustomerByMobileNumber(Long customerId, String newMobileNumber) {
+        CustomerModel model = customerRepository.findByCustomerId(customerId)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not found with customerId: "+ customerId));
         model.setMobileNumber(newMobileNumber);
-        model.setUpdatedDate(LocalDateTime.now());
-        CustomerModel saved = customerRepository.save(model);
-        logger.info("Mobile updated for customerId={}", saved.getCustomerId());
-        return mapper.toCustomerResponse(saved);
+        CustomerModel updatedCustomerMobileNumber = customerRepository.saveAndFlush(model);
+        return CustomerMapper.toCustomerResponse(updatedCustomerMobileNumber);
     }
 
     /**
-     * Update customer's email address.
+     * Updates the customer's email address.
      *
-     * @param mobileNumber Current mobile number
-     * @param newEmail     New email to update
-     * @return Updated CustomerResponse object
+     * @param customerId      Unique ID of the customer
+     * @param newEmailAddress New email address to update
+     * @return {@link CustomerResponse} with updated email address
+     * @throws CustomerNotFoundException if no customer is found with the given ID
      */
     @Override
-    public CustomerResponse updateEmail(String mobileNumber, String newEmail) {
-        CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found with mobile: " + mobileNumber));
-        if (customerRepository.existsByEmailAddress(newEmail)) {
-            throw new CustomerAlreadyExistsException("New email already exists");
-        }
-        model.setEmailAddress(newEmail);
-        model.setUpdatedDate(LocalDateTime.now());
-        CustomerModel saved = customerRepository.save(model);
-        logger.info("Email updated for customerId={}", saved.getCustomerId());
-        return mapper.toCustomerResponse(saved);
+    public CustomerResponse updateCustomerByEmailAddress(Long customerId, String newEmailAddress) {
+        CustomerModel model = customerRepository.findByCustomerId(customerId)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not found with customerId: "+ customerId));
+        model.setEmailAddress(newEmailAddress);
+        CustomerModel updatedCustomerEmail = customerRepository.saveAndFlush(model);
+        return CustomerMapper.toCustomerResponse(updatedCustomerEmail);
     }
 
-
     /**
-     * Update customer's password.
+     * Deletes a customer using their mobile number.
      *
-     * @param mobileNumber Current mobile number
-     * @param newPassword  New password to set
-     * @return Updated CustomerResponse object
+     * @param mobileNumber Unique mobile number of the customer
+     * @return {@link CustomerResponse} of deleted customer
+     * @throws CustomerNotFoundException if no customer is found with the given mobile number
      */
     @Override
-    public CustomerResponse updatePassword(String mobileNumber, String newPassword) {
-        CustomerModel model = customerRepository.findByMobileNumber(mobileNumber)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found"));
-        model.setPassword(passwordUtil.encodePassword(newPassword));
-        model.setUpdatedDate(LocalDateTime.now());
-        CustomerModel saved = customerRepository.save(model);
-        logger.info("Password changed for customerId={}", saved.getCustomerId());
-        return mapper.toCustomerResponse(saved);
+    public CustomerResponse deleteCustomerByMobileNumber(String mobileNumber) {
+        CustomerModel model = customerRepository.findCustomerByMobileNumber(mobileNumber)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not Found with Mobile Number: "+ mobileNumber));
+        customerRepository.delete(model);
+        return CustomerMapper.toCustomerResponse(model);
     }
 
     /**
-     * Reset password (after verifying confirm password).
+     * Deletes a customer using their email address.
      *
-     * @param mobileNumber    Customer's mobile number
-     * @param newPassword     New password
-     * @param confirmPassword Confirm password to match
-     * @return Updated CustomerResponse object
+     * @param emailAddress Unique email address of the customer
+     * @return {@link CustomerResponse} of deleted customer
+     * @throws CustomerNotFoundException if no customer is found with the given email address
      */
     @Override
-    public CustomerResponse forgetPassword(String mobileNumber, String newPassword, String confirmPassword) {
-        if (!newPassword.equals(confirmPassword)) {
-            throw new IllegalArgumentException("Password and confirm password do not match");
-        }
-        return updatePassword(mobileNumber, newPassword);
+    public CustomerResponse deleteCustomerByEmailAddress(String emailAddress) {
+        CustomerModel model = customerRepository.findCustomerByEmailAddress(emailAddress)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not Found with Email Address: "+ emailAddress));
+        customerRepository.delete(model);
+        return CustomerMapper.toCustomerResponse(model);
     }
 
     /**
-     * Soft delete a customer (mark as INACTIVE).
-     *
-     * @param customerId ID of the customer to delete
-     * @return Updated CustomerResponse object with INACTIVE status
-     */
-    @Override
-    public CustomerResponse deleteCustomer(Long customerId) {
-        CustomerModel model = customerRepository.findById(customerId)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found"));
-        model.setStatus(CustomerStatus.INACTIVE);
-        model.setUpdatedDate(LocalDateTime.now());
-        CustomerModel saved = customerRepository.save(model);
-        logger.info("Customer soft-deleted (INACTIVE) id={}", customerId);
-        return mapper.toCustomerResponse(saved);
-    }
-
-    /**
-     * Activate customer by verifying OTP.
+     * Updates a customer's password using their mobile number.
      *
      * @param mobileNumber Customer's mobile number
-     * @param otp          OTP value for activation
-     * @return Updated CustomerResponse object with ACTIVE status
+     * @param newPassword  New password (will be encrypted before saving)
+     * @return {@link CustomerResponse} with updated password (not exposed in response)
+     * @throws CustomerNotFoundException if no customer is found with the given mobile number
      */
     @Override
-    public CustomerResponse activateCustomerByOtp(String mobileNumber, String otp) {
-        CustomerModel customer = customerRepository.findByMobileNumber(mobileNumber)
-                .orElseThrow(() -> new CustomerNotFoundException("Customer not found"));
-        boolean ok = customer.getOtp().stream()
-                .anyMatch(OTP -> OTP.getOtpValue().equals(otp));
-        if (!ok) {
-            throw new InvalidOtpException("Invalid OTP");
-        }
-        customer.setStatus(CustomerStatus.ACTIVE);
-        customer.setUpdatedDate(LocalDateTime.now());
-        CustomerModel saved = customerRepository.save(customer);
-        logger.info("Customer activated id={} mobile={}", saved.getCustomerId(), saved.getMobileNumber());
-        return mapper.toCustomerResponse(saved);
+    public CustomerResponse updatePasswordByMobileNumber(String mobileNumber, String newPassword) {
+        CustomerModel model = customerRepository.findCustomerByMobileNumber(mobileNumber)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not Found with Mobile Number: "+ mobileNumber));
+        model.setPassword(newPassword);
+        CustomerModel updatedCustomer = customerRepository.saveAndFlush(model);
+        return CustomerMapper.toCustomerResponse(updatedCustomer);
     }
+
+    /**
+     * Updates a customer's password using their email address.
+     *
+     * @param emailAddress Customer's email address
+     * @param newPassword  New password (will be encrypted before saving)
+     * @return {@link CustomerResponse} with updated password (not exposed in response)
+     * @throws CustomerNotFoundException if no customer is found with the given email address
+     */
+    @Override
+    public CustomerResponse updatePasswordByEmailAddress(String emailAddress, String newPassword) {
+        CustomerModel model = customerRepository.findCustomerByEmailAddress(emailAddress)
+                .orElseThrow(()-> new CustomerNotFoundException("Customer not Found with Email Address: "+ emailAddress));
+        model.setPassword(newPassword);
+        CustomerModel updatedCustomer = customerRepository.saveAndFlush(model);
+        return CustomerMapper.toCustomerResponse(updatedCustomer);
+    }
+
+    /**
+     * Updates the mobile number of a customer by their customer ID.
+     *
+     * @param customerId      Unique identifier of the customer
+     * @param newMobileNumber New mobile number to update
+     * @return Success message
+     * @throws RuntimeException if the customer with the given ID does not exist
+     */
+    @Override
+    @Transactional
+    public String updateCustomerMobileNumberByCustomerId(Long customerId, String newMobileNumber) {
+        CustomerModel customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with customerId: " + customerId));
+        customer.setMobileNumber(newMobileNumber);
+        customerRepository.save(customer);
+        return "Mobile number updated successfully";
+    }
+
+    /**
+     * Updates the email address of a customer by their customer ID.
+     *
+     * @param customerId      Unique identifier of the customer
+     * @param newEmailAddress New email address to update
+     * @return Success message
+     * @throws RuntimeException if the customer with the given ID does not exist
+     */
+    @Override
+    @Transactional
+    public String updateCustomerEmailAddressByCustomerId(Long customerId, String newEmailAddress) {
+        CustomerModel customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with customerId: " + customerId));
+        customer.setEmailAddress(newEmailAddress);
+        customerRepository.save(customer);
+        return "Email address updated successfully";
+    }
+
+    /**
+     * Updates the password of a customer by their customer ID.
+     *
+     * @param customerId Unique identifier of the customer
+     * @param newPassword New password to update
+     * @return Success message
+     * @throws RuntimeException if the customer with the given ID does not exist
+     */
+    @Override
+    @Transactional
+    public String updatePasswordByCustomerId(Long customerId, String newPassword) {
+        CustomerModel customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with customerId: " + customerId));
+        customer.setPassword(newPassword);
+        customerRepository.save(customer);
+        return "Password updated successfully";
+    }
+
+    /**
+     * Deletes a customer by marking them as INACTIVE using their customer ID.
+     *
+     * @param customerId Unique identifier of the customer
+     * @return Success message
+     * @throws RuntimeException if the customer with the given ID does not exist
+     */
+    @Override
+    @Transactional
+    public String deleteCustomerByCustomerId(Long customerId) {
+        CustomerModel customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with customerId: " + customerId));
+        customerRepository.save(customer);
+        return "Customer deleted successfully";
+    }
+
 }

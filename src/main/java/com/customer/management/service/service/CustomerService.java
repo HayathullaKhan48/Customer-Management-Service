@@ -4,96 +4,148 @@ import com.customer.management.service.request.CustomerRequest;
 import com.customer.management.service.response.CustomerResponse;
 import org.springframework.data.domain.Page;
 
+
 /**
- * Defines customer-related operations.
+ * CustomerService defines all customer-related operations.
+ *
+ * Why we need this interface:
+ * - Provides a clear contract for customer-related operations.
+ * - Helps in separating the service implementation from its usage.
+ * - Improves testability (we can mock this interface in unit tests).
+ * - Makes code modular and maintainable.
  */
 public interface CustomerService {
 
     /**
-     * Create a new customer
+     * Creates a new customer and persists it to the database.
      *
      * @param request CustomerRequest object containing customer details
-     * @return CustomerResponse object with saved customer information
+     *                (name, email, password, age, addresses).
+     * @return CustomerResponse containing saved customer information
+     *         including ID, timestamps, and status.
      */
     CustomerResponse createCustomer(CustomerRequest request);
 
     /**
-     * Get all customers with pagination & sorting
+     * Retrieves all customers in a paginated and sorted format.
      *
-     * @param page page number (0-based)
-     * @param size number of records per page
-     * @param sortBy field name to sort by
-     * @return Page containing CustomerResponse objects
+     * @param page   page number (0-based, default is 0)
+     * @param size   number of records per page (default is 20)
+     * @param sortBy field name to sort by (e.g. createdDate, fullName)
+     * @return Page of CustomerResponse objects for the requested page
      */
-    Page<CustomerResponse> getAllCustomers(int page, int size, String sortBy);
+    Page<CustomerResponse> getCustomers(int page, int size, String sortBy);
 
     /**
-     * Get customer by ID
+     * Retrieves a single customer by their mobile number.
      *
-     * @param customerId unique ID of the customer
-     * @return CustomerResponse object for the requested customer
+     * @param mobileNumber the unique mobile number of the customer
+     * @return CustomerResponse containing matching customer details
      */
-    CustomerResponse getCustomerById(Long customerId);
+    CustomerResponse getCustomerByMobileNumber(String mobileNumber);
 
     /**
-     * Update full customer details
+     * Retrieves a single customer by their email address.
      *
-     * @param request CustomerRequest object with updated details
-     * @return CustomerResponse object with updated customer information
+     * @param emailAddress the unique email address of the customer
+     * @return CustomerResponse containing matching customer details
      */
-    CustomerResponse updateCustomer(CustomerRequest request);
+    CustomerResponse getCustomerByEmailAddress(String emailAddress);
 
     /**
-     * Update only mobile number
+     * Retrieves a single customer by their full name.
      *
-     * @param mobileNumber current mobile number of customer
+     * @param fullName the full name of the customer
+     * @return CustomerResponse containing matching customer details
+     */
+    CustomerResponse getCustomerByFullName(String fullName);
+
+    /**
+     * Updates customer's mobile number.
+     *
+     * @param customerId     unique identifier of the customer
      * @param newMobileNumber new mobile number to update
-     * @return CustomerResponse object with updated mobile number
+     * @return CustomerResponse with updated customer details
      */
-    CustomerResponse updateMobileNumber(String mobileNumber, String newMobileNumber);
+    CustomerResponse updateCustomerByMobileNumber(Long customerId, String newMobileNumber);
 
     /**
-     * Update only email address
+     * Updates customer's email address.
      *
-     * @param mobileNumber mobile number of customer
-     * @param newEmail new email address to update
-     * @return CustomerResponse object with updated email address
+     * @param customerId      unique identifier of the customer
+     * @param newEmailAddress new email address to update
+     * @return CustomerResponse with updated customer details
      */
-    CustomerResponse updateEmail(String mobileNumber, String newEmail);
+    CustomerResponse updateCustomerByEmailAddress(Long customerId, String newEmailAddress);
 
     /**
-     * Update password
+     * Soft deletes a customer by marking them as INACTIVE
+     * using their mobile number.
      *
-     * @param mobileNumber mobile number of customer
-     * @param newPassword new password to set
-     * @return CustomerResponse object with updated password
+     * @param mobileNumber unique mobile number of the customer
+     * @return CustomerResponse with status set to INACTIVE
      */
-    CustomerResponse updatePassword(String mobileNumber, String newPassword);
+    CustomerResponse deleteCustomerByMobileNumber(String mobileNumber);
 
     /**
-     * Reset password (with confirmation)
+     * Soft deletes a customer by marking them as INACTIVE
+     * using their email address.
      *
-     * @param mobileNumber mobile number of customer
-     * @param newPassword new password to set
-     * @param confirmPassword confirmation of the new password
-     * @return CustomerResponse object with updated password
+     * @param emailAddress unique email address of the customer
+     * @return CustomerResponse with status set to INACTIVE
      */
-    CustomerResponse forgetPassword(String mobileNumber, String newPassword, String confirmPassword);
+    CustomerResponse deleteCustomerByEmailAddress(String emailAddress);
 
     /**
-     * Delete customer (soft delete, mark inactive)
+     * Updates customer's password using their mobile number.
      *
-     * @param customerId unique ID of the customer
-     * @return CustomerResponse object after marking customer inactive
+     * @param mobileNumber mobile number of the customer
+     * @param newPassword  new password to be saved (will be encrypted)
+     * @return CustomerResponse with updated password (not exposed in response)
      */
-    CustomerResponse deleteCustomer(Long customerId);
+    CustomerResponse updatePasswordByMobileNumber(String mobileNumber, String newPassword);
 
     /**
-     * Activate customer using OTP
+     * Updates customer's password using their email address.
      *
-     * @param mobileNumber mobile number of customer
-     * @param otp OTP code to validate and activate customer
-     * @return CustomerResponse object after activation
+     * @param emailAddress email address of the customer
+     * @param newPassword  new password to be saved (will be encrypted)
+     * @return CustomerResponse with updated password (not exposed in response)
      */
-    CustomerResponse activateCustomerByOtp(String mobileNumber, String otp);
+    CustomerResponse updatePasswordByEmailAddress(String emailAddress, String newPassword);
+
+    /**
+     * Updates a customer's mobile number using their customer ID.
+     *
+     * @param customerId     unique identifier of the customer
+     * @param newMobileNumber new mobile number
+     * @return CustomerResponse containing updated customer details
+     */
+    String updateCustomerMobileNumberByCustomerId(Long customerId, String newMobileNumber);
+
+    /**
+     * Updates a customer's email address using their customer ID.
+     *
+     * @param customerId      unique identifier of the customer
+     * @param newEmailAddress new email address
+     * @return CustomerResponse containing updated customer details
+     */
+    String updateCustomerEmailAddressByCustomerId(Long customerId, String newEmailAddress);
+
+    /**
+     * Updates a customer's password using their customer ID.
+     *
+     * @param customerId  unique identifier of the customer
+     * @param newPassword new password to be encrypted and saved
+     * @return CustomerResponse; password itself is not exposed
+     */
+    String updatePasswordByCustomerId(Long customerId, String newPassword);
+
+    /**
+     * Softly deletes a customer using their customer ID by marking them as INACTIVE.
+     *
+     * @param customerId unique identifier of the customer
+     * @return CustomerResponse reflecting updated status as INACTIVE
+     */
+    String deleteCustomerByCustomerId(Long customerId);
 }

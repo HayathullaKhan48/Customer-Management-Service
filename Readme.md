@@ -73,7 +73,6 @@ ___
   "age": 16,
   "mobileNumber": "9988776655",
   "emailAddress": "AakifAilKhan@gmail.com",
-  "password": "ABC@123123",
   "addresses": [
     {
       "street": "Main Road",

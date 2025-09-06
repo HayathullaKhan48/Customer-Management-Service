@@ -4,8 +4,6 @@ import com.customer.management.service.request.CustomerRequest;
 import com.customer.management.service.response.CustomerResponse;
 import com.customer.management.service.service.CustomerService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * CustomerController is responsible for handling all incoming HTTP requests
  * related to customer operations (CRUD and custom actions like password reset).
- *  Why we need this class:
+ * Why we need this class:
  * - Acts as the entry point for API clients (Postman, Frontend, Swagger)
  * - Delegates business logic to the CustomerService layer
  * - Handles validation, logging, and HTTP status responses
@@ -31,10 +29,10 @@ public class CustomerController {
     private static final Logger logger = LoggerFactory.getLogger(CustomerController.class);
 
     /**
-     * Create a new customer.
+     * Create a new customer in the system.
      *
-     * @param request the customer request body containing details like name, email, password, etc.
-     * @return CustomerResponse with newly created customer details
+     * @param request CustomerRequest containing all required details like name, email, password, and addresses
+     * @return ResponseEntity containing CustomerResponse with newly created customer details
      */
     @PostMapping("/create")
     public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest request) {
@@ -43,131 +41,145 @@ public class CustomerController {
     }
 
     /**
-     * Retrieve a paginated list of all customers.
+     * Retrieve a paginated list of all customers with optional sorting.
      *
      * @param page   page number (default: 0)
      * @param size   number of records per page (default: 20)
-     * @param sortBy field to sort by (default: createdDate)
-     * @return Page<CustomerResponse> containing paginated results
+     * @param sortBy field to sort results by (default: createdDate)
+     * @return ResponseEntity containing a paginated Page of CustomerResponse objects
      */
     @GetMapping("/customers")
-    public ResponseEntity<Page<CustomerResponse>> allCustomers(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<CustomerResponse>> getCustomers(@RequestParam(defaultValue = "0") int page,
                                                                @RequestParam(defaultValue = "20") int size,
                                                                @RequestParam(defaultValue = "createdDate") String sortBy) {
 
         logger.info("Fetching all customers with page={}, size={}, sortBy={}", page, size, sortBy);
-        Page<CustomerResponse> request = customerService.getAllCustomers(page, size, sortBy);
+        Page<CustomerResponse> request = customerService.getCustomers(page, size, sortBy);
         return ResponseEntity.ok(request);
     }
 
+
     /**
-     * Fetch a single customer by their unique ID.
+     * Get a customer by their mobile number.
      *
-     * @param customerId the customer ID to search for
-     * @return CustomerResponse containing customer details if found
+     * @param mobileNumber mobile number of the customer
+     * @return ResponseEntity containing CustomerResponse with matched customer details
      */
-    @GetMapping("/getById/{customerId}")
-    public ResponseEntity<CustomerResponse> getById(@PathVariable Long customerId) {
-        logger.info("Fetching customer by ID: {}", customerId);
-        return ResponseEntity.ok(customerService.getCustomerById(customerId));
+    @GetMapping("/getCustomerByMobileNumber/{mobileNumber}")
+    public ResponseEntity<CustomerResponse> getByMobileNumber(@PathVariable String mobileNumber) {
+        return ResponseEntity.ok(customerService.getCustomerByMobileNumber(mobileNumber));
     }
 
     /**
-     * Update a customer's mobile number.
+     * Get a customer by their email address.
      *
-     * @param mobileNumber    current mobile number
-     * @param newMobileNumber new mobile number to be updated
-     * @return updated CustomerResponse
+     * @param emailAddress email address of the customer
+     * @return ResponseEntity containing CustomerResponse with matched customer details
      */
-    @PatchMapping("/updateMobile/{mobileNumber}")
-    public ResponseEntity<CustomerResponse> updateMobile(@PathVariable @NotBlank String mobileNumber,
-                                                         @RequestParam @NotBlank String newMobileNumber) {
-        logger.info("Updating mobile number for {} to {}", mobileNumber, newMobileNumber);
-        return ResponseEntity.ok(customerService.updateMobileNumber(mobileNumber, newMobileNumber));
+    @GetMapping("/getCustomerByEmailAddress/{emailAddress}")
+    public ResponseEntity<CustomerResponse> getByEmailAddress(@PathVariable String emailAddress) {
+        return ResponseEntity.ok(customerService.getCustomerByEmailAddress(emailAddress));
     }
 
     /**
-     * Update a customer's email address.
+     * Get a customer by their full name.
      *
-     * @param mobileNumber current mobile number (used to identify the customer)
-     * @param newEmail     new email address to be updated
-     * @return updated CustomerResponse
+     * @param fullName full name of the customer
+     * @return ResponseEntity containing CustomerResponse with matched customer details
      */
-    @PatchMapping("/updateEmail/{mobileNumber}")
-    public ResponseEntity<CustomerResponse> updateEmail(@PathVariable @NotBlank String mobileNumber,
-                                                        @RequestParam @Email String newEmail) {
-        logger.info("Updating email for {} to {}", mobileNumber, newEmail);
-        return ResponseEntity.ok(customerService.updateEmail(mobileNumber, newEmail));
+    @GetMapping("/getByFullName/{fullName}")
+    public ResponseEntity<CustomerResponse> getByFullName(@PathVariable String fullName) {
+        return ResponseEntity.ok(customerService.getCustomerByFullName(fullName));
     }
 
     /**
-     * Fully update customer details (like name, email, age, etc.).
-     * This is a PUT request meaning the full customer record is replaced with new data.
+     * Partially update a customer's mobile number.
      *
-     * @param request updated customer details
-     * @return updated CustomerResponse
+     * @param customerId      ID of the customer whose mobile number is to be updated
+     * @param newMobileNumber new mobile number to set
+     * @return ResponseEntity containing CustomerResponse with updated customer details
      */
-    @PutMapping("/customersUpdate")
-    public ResponseEntity<CustomerResponse> updateFull(@Valid @RequestBody CustomerRequest request) {
-        logger.info("Updating full customer details for mobile: {}", request.getMobileNumber());
-        return ResponseEntity.ok(customerService.updateCustomer(request));
+    @PatchMapping("/updateCustomerByMobileNumber/{customerId}/{newMobileNumber}")
+    public ResponseEntity<CustomerResponse> updateCustomerByMobileNumber(@PathVariable Long customerId, @PathVariable String newMobileNumber) {
+        return ResponseEntity.ok(customerService.updateCustomerByMobileNumber(customerId, newMobileNumber));
     }
 
     /**
-     * Change a customer's password manually.
+     * Partially update a customer's email address.
      *
-     * @param mobileNumber customer's mobile number
-     * @param newPassword  new password to be set
-     * @return updated CustomerResponse
+     * @param customerId      ID of the customer whose email address is to be updated
+     * @param newEmailAddress new email address to set
+     * @return ResponseEntity containing CustomerResponse with updated customer details
      */
-    @PatchMapping("/customer/changePassword/{mobileNumber}/{newPassword}")
-    public ResponseEntity<CustomerResponse> changePassword(@PathVariable @NotBlank String mobileNumber,
-                                                           @PathVariable @NotBlank String newPassword) {
-        logger.info("Changing password for customer: {}", mobileNumber);
-        return ResponseEntity.ok(customerService.updatePassword(mobileNumber, newPassword));
+    @PatchMapping("/updateCustomerByEmailAddress/{customerId}/{newEmailAddress}")
+    public ResponseEntity<CustomerResponse> updateCustomerByEmailAddress(@PathVariable Long customerId, @PathVariable String newEmailAddress){
+        return ResponseEntity.ok(customerService.updateCustomerByEmailAddress(customerId, newEmailAddress));
     }
 
     /**
-     * Forgot password flow (usually triggered by OTP verification).
-     * Ensures that new password and confirm password match before update.
+     * Soft-delete a customer by their mobile number (mark as inactive).
      *
-     * @param mobileNumber     customer's mobile number
-     * @param newPassword      new password
-     * @param confirmPassword  confirm password (must match)
-     * @return updated CustomerResponse
+     * @param mobileNumber mobile number of the customer to be deleted
+     * @return ResponseEntity containing CustomerResponse with updated (inactive) status
      */
-    @PatchMapping("/forgotPassword/{mobileNumber}/{newPassword}/{confirmPassword}")
-    public ResponseEntity<CustomerResponse> forgotPassword(@PathVariable @NotBlank String mobileNumber,
-                                                           @PathVariable @NotBlank String newPassword,
-                                                           @PathVariable @NotBlank String confirmPassword) {
-        logger.info("Processing forgot password for {}", mobileNumber);
-        return ResponseEntity.ok(customerService.forgetPassword(mobileNumber, newPassword, confirmPassword));
+    @DeleteMapping("/deleteCustomerByMobileNumber/{mobileNumber}")
+    public ResponseEntity<CustomerResponse> deleteCustomerByMobileNumber(@PathVariable String mobileNumber){
+        return ResponseEntity.ok(customerService.deleteCustomerByMobileNumber(mobileNumber));
     }
 
     /**
-     * Soft delete a customer by marking status as INACTIVE.
-     * Data is not physically removed from the database.
+     * Soft-delete a customer by their email address (mark as inactive).
      *
-     * @param customerId ID of the customer to delete
-     * @return updated CustomerResponse with status set to INACTIVE
+     * @param emailAddress email address of the customer to be deleted
+     * @return ResponseEntity containing CustomerResponse with updated (inactive) status
      */
-    @DeleteMapping("/deleteCustomer/{customerId}")
-    public ResponseEntity<CustomerResponse> deleteCustomer(@PathVariable Long customerId) {
-        logger.info("Deleting customer with ID: {}", customerId);
-        return ResponseEntity.ok(customerService.deleteCustomer(customerId));
+    @DeleteMapping("/deleteCustomerByEmailAddress/{emailAddress}")
+    public ResponseEntity<CustomerResponse> deleteCustomerByEmailAddress(@PathVariable String emailAddress){
+        return ResponseEntity.ok(customerService.deleteCustomerByEmailAddress(emailAddress));
     }
 
     /**
-     * Activate a customer account using OTP verification.
+     * Update customer password using their mobile number.
      *
-     * @param mobileNumber customer's mobile number
-     * @param otpNo        OTP provided by the customer
-     * @return updated CustomerResponse with status set to ACTIVE if OTP is valid
+     * @param mobileNumber mobile number of the customer
+     * @param newPassword  new password to set
+     * @return ResponseEntity containing CustomerResponse with updated password information
      */
-    @PatchMapping("/activateByOtp/{mobileNumber}/{otpNo}")
-    public ResponseEntity<CustomerResponse> activateByOtp(@PathVariable @NotBlank String mobileNumber,
-                                                          @PathVariable @NotBlank String otpNo) {
-        logger.info("Activating customer {} with OTP {}", mobileNumber, otpNo);
-        return ResponseEntity.ok(customerService.activateCustomerByOtp(mobileNumber, otpNo));
+    @PatchMapping("/updatePasswordByMobileNumber/{mobileNumber}/{newPassword}")
+    public ResponseEntity<CustomerResponse> updatePasswordByMobileNumber(@PathVariable String mobileNumber, @PathVariable String newPassword){
+        return ResponseEntity.ok(customerService.updatePasswordByMobileNumber(mobileNumber, newPassword));
     }
+
+    /**
+     * Update customer password using their email address.
+     *
+     * @param emailAddress email address of the customer
+     * @param newPassword  new password to set
+     * @return ResponseEntity containing CustomerResponse with updated password information
+     */
+    @PatchMapping("/updatePasswordByEmailAddress/{emailAddress}/{newPassword}")
+    public ResponseEntity<CustomerResponse> updatePasswordByEmailAddress(@PathVariable String emailAddress, @PathVariable String newPassword){
+        return ResponseEntity.ok(customerService.updatePasswordByEmailAddress(emailAddress, newPassword));
+    }
+
+    @PatchMapping("/updateCustomerMobileNumberByCustomerId/{customerId}/{newMobileNumber}")
+    public ResponseEntity<String> updateCustomerMobileNumberByCustomerId(@PathVariable Long customerId, @PathVariable String newMobileNumber) {
+        return ResponseEntity.ok(customerService.updateCustomerMobileNumberByCustomerId(customerId, newMobileNumber));
+    }
+
+    @PatchMapping("/updateCustomerEmailAddressByCustomerId/{customerId}/{newEmailAddress}")
+    public ResponseEntity<String> updateCustomerEmailAddressByCustomerId(@PathVariable Long customerId, @PathVariable String newEmailAddress){
+        return ResponseEntity.ok(customerService.updateCustomerEmailAddressByCustomerId(customerId, newEmailAddress));
+    }
+
+    @PatchMapping("/updateCustomerPasswordByCustomerId/{customerId}/{newPassword}")
+    public ResponseEntity<String> updateCustomerPasswordByCustomerId(@PathVariable Long customerId, @PathVariable String newPassword){
+        return ResponseEntity.ok(customerService.updatePasswordByCustomerId(customerId, newPassword));
+    }
+
+    @DeleteMapping("/deleteCustomerByCustomerId/{customerId}")
+    public ResponseEntity<String> deleteCustomerByCustomerId(@PathVariable Long customerId){
+        return ResponseEntity.ok(customerService.deleteCustomerByCustomerId(customerId));
+    }
+
 }

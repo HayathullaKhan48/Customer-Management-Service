@@ -1,14 +1,8 @@
 package com.customer.management.service.request;
 
-import com.customer.management.service.entity.CustomerAddress;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.util.List;
 
@@ -32,9 +26,8 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
+@ToString
 public class CustomerRequest {
-
-    private Long customerId;
 
     @NotBlank(message = "First name is required")
     private String firstName;
@@ -56,17 +49,8 @@ public class CustomerRequest {
     @Email(message = "Email must be valid")
     private String emailAddress;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 chars")
-    private String password;
-
-    @NotEmpty(message = "Addresses cannot be empty")
     @Valid
-    private List<CustomerAddress> addresses;
+    @NotEmpty(message = "Addresses cannot be empty")
+    private List<AddressRequest> addresses;
 
-    private String newMobileNumber;
-    private String newEmailAddress;
-    private String newPassword;
-    private String confirmPassword;
-    private String otp;
 }

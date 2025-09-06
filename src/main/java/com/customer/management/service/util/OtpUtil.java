@@ -1,16 +1,14 @@
 package com.customer.management.service.util;
 
 import com.customer.management.service.constant.CustomerConstant;
-import org.springframework.stereotype.Component;
 import java.security.SecureRandom;
 
 /**
  * Utility class for generating numeric OTPs for customer verification.
  */
-@Component
 public class OtpUtil {
 
-    private final SecureRandom random = new SecureRandom();
+    private static final SecureRandom random = new SecureRandom();
 
     /**
      * Generates a numeric OTP.
@@ -19,7 +17,7 @@ public class OtpUtil {
      *
      * @return a randomly generated numeric OTP
      */
-    public String generateOtp() {
+    public static String generateOtp() {
         StringBuilder otp = new StringBuilder(CustomerConstant.OTP_LENGTH);
         for (int i = 0; i < CustomerConstant.OTP_LENGTH; i++) {
             int index = random.nextInt(CustomerConstant.OTP_CHARACTERS.length());

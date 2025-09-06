@@ -1,24 +1,17 @@
 package com.customer.management.service.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Column;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 /**
- * CustomerOTP Entity:
+ * OtpModel Entity:
  * - Represents the OTP (One-Time Password) details linked to a customer.
  * - Each record stores:
  *   - A unique OTP ID (Primary Key)
@@ -34,7 +27,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CustomerOTP {
+public class OtpModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,9 +38,10 @@ public class CustomerOTP {
     private String otpValue;
 
     @Column(name = "created_date", nullable = false)
+    @CreationTimestamp
     private LocalDateTime createdDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private CustomerModel customer;
 }

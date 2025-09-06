@@ -1,80 +1,167 @@
 package com.customer.management.service.mapper;
 
+import com.customer.management.service.entity.AddressModel;
 import com.customer.management.service.entity.CustomerModel;
-import com.customer.management.service.entity.CustomerAddress;
+import com.customer.management.service.entity.OtpModel;
+import com.customer.management.service.enums.CustomerStatus;
+import com.customer.management.service.request.AddressRequest;
 import com.customer.management.service.request.CustomerRequest;
+import com.customer.management.service.response.AddressResponse;
 import com.customer.management.service.response.CustomerResponse;
-import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static com.customer.management.service.util.OtpUtil.generateOtp;
+import static com.customer.management.service.util.PasswordUtil.autoGenerateHashPassword;
 
 /**
- * CustomerMapper is responsible for converting data between different layers:
- * - Converts CustomerRequest (incoming API payload) into CustomerModel (entity for persistence).
- * - Converts CustomerModel (database entity) into CustomerResponse (outgoing API response).
- * This ensures a clean separation between API layer, persistence layer, and business logic.
+ * CustomerMapper handles all object mapping between:
+ * - Request objects (CustomerRequest, AddressRequest) coming from API layer
+ * - Entity objects (CustomerModel, AddressModel, OtpModel) used in persistence layer
+ * - Response objects (CustomerResponse, AddressResponse) sent back to the client
+ * This approach ensures clean separation of concerns by keeping
+ * conversion logic isolated from service/business logic.
  */
-@Component
+
 public class CustomerMapper {
 
     /**
-     * Converts a CustomerRequest object into a CustomerModel entity.
+     * Converts a {@link CustomerRequest} into a {@link CustomerModel} entity.
+     * <p>
      * Steps performed:
-     * - Maps all basic customer fields (first name, last name, email, etc.).
-     * - Sets createdDate and updatedDate with the current timestamp.
-     * - If addresses are provided, maps each address and links it back to the customer
-     *   so that the relationship is properly established before persisting.
+     * <ul>
+     *     <li>Maps all basic customer fields (first name, last name, email, etc.)</li>
+     *     <li>Auto-generates a secure hashed password</li>
+     *     <li>Sets customer status as {@link CustomerStatus#INACTIVE} by default</li>
+     *     <li>Initializes createdDate and updatedDate automatically (via entity lifecycle)</li>
+     * </ul>
      *
-     * @param request the incoming customer request object from API
-     * @return a fully populated CustomerModel entity ready for persistence
+     * @param request the incoming customer data from API
+     * @return a fully populated {@link CustomerModel} ready for persistence
      */
-    public CustomerModel toCustomerModel(CustomerRequest request) {
-        CustomerModel customer = CustomerModel.builder()
+    public static CustomerModel toCustomerModel(CustomerRequest request) {
+        return CustomerModel.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .fullName(request.getFullName())
                 .age(request.getAge())
+                .password(autoGenerateHashPassword())
                 .mobileNumber(request.getMobileNumber())
                 .emailAddress(request.getEmailAddress())
-                .password(request.getPassword())
-                .createdDate(LocalDateTime.now())
-                .updatedDate(LocalDateTime.now())
+                .status(CustomerStatus.INACTIVE)
                 .build();
-        if (request.getAddresses() != null) {
-            List<CustomerAddress> list = request.getAddresses().stream().map(address -> {
-                address.setCustomer(customer);
-                return address;
-            }).collect(Collectors.toList());
-            customer.setAddress(list);
-        }
-        return customer;
     }
 
     /**
-     * Converts a CustomerModel entity into a CustomerResponse object.
+     * Maps an {@link AddressRequest} object to an {@link AddressModel} entity
+     * and links it with the given customer.
      *
-     * Steps performed:
-     * - Maps all fields from the entity, including personal details, status, timestamps, and addresses.
-     * - Used for sending a clean and structured response to the client.
-     *
-     * @param CustomerModel the persisted customer entity from database
-     * @return a CustomerResponse object containing customer data for API response
+     * @param model   the parent {@link CustomerModel} entity to which this address belongs
+     * @param address the address request coming from API
+     * @return a fully populated {@link AddressModel} linked to the customer
      */
-    public CustomerResponse toCustomerResponse(CustomerModel CustomerModel) {
+    public static AddressModel requestToAddressMapper(CustomerModel model, AddressRequest address) {
+       return AddressModel.builder()
+               .street(address.getStreet())
+               .city(address.getCity())
+               .state(address.getState())
+               .country(address.getCountry())
+               .addressType(address.getAddressType())
+               .pincode(address.getPincode())
+               .customer(model)
+               .build();
+    }
+
+    /**
+     * Prepares a new {@link OtpModel} entity for a customer.
+     * <p>
+     * Steps:
+     * <ul>
+     *     <li>Generates a secure OTP using {@link com.customer.management.service.util.OtpUtil}</li>
+     *     <li>Associates OTP with the given customer</li>
+     * </ul>
+     *
+     * @param customerModel the customer for whom OTP is being generated
+     * @return a new {@link OtpModel} entity ready to be persisted
+     */
+    public static OtpModel requestToOtpMapper(CustomerModel customerModel) {
+        String otpValue = generateOtp();
+        return OtpModel.builder()
+                .otpValue(otpValue)
+                .customer(customerModel)
+                .build();
+    }
+
+    /**
+     * Converts a {@link CustomerModel} along with its addresses and OTP
+     * into a {@link CustomerResponse} object for API response.
+     *
+     * @param customerModel the persisted customer entity from database
+     * @param models        list of address entities linked with the customer
+     * @param otpModel      the generated OTP entity
+     * @return a {@link CustomerResponse} object containing complete customer details
+     */
+    public static CustomerResponse toCustomerResponse(CustomerModel customerModel, List<AddressModel> models, OtpModel otpModel) {
         return CustomerResponse.builder()
-                .customerId(CustomerModel.getCustomerId())
-                .firstName(CustomerModel.getFirstName())
-                .lastName(CustomerModel.getLastName())
-                .fullName(CustomerModel.getFullName())
-                .age(CustomerModel.getAge())
-                .mobileNumber(CustomerModel.getMobileNumber())
-                .emailAddress(CustomerModel.getEmailAddress())
-                .status(CustomerModel.getStatus())
-                .createdDate(CustomerModel.getCreatedDate())
-                .updatedDate(CustomerModel.getUpdatedDate())
-                .addresses(CustomerModel.getAddress())
+                .customerId(customerModel.getCustomerId())
+                .firstName(customerModel.getFirstName())
+                .lastName(customerModel.getLastName())
+                .fullName(customerModel.getFullName())
+                .age(customerModel.getAge())
+                .mobileNumber(customerModel.getMobileNumber())
+                .emailAddress(customerModel.getEmailAddress())
+                .status(customerModel.getStatus())
+                .addresses(modelToAddressResponse(models))
+                .otp(otpModel.getOtpValue())
+                .createdDate(customerModel.getCreatedDate())
+                .updatedDate(customerModel.getUpdatedDate())
+                .build();
+    }
+
+    /**
+     * Converts a list of {@link AddressModel} entities into a list of {@link AddressResponse} objects.
+     *
+     * @param addresses list of address entities to be converted
+     * @return a list of address response objects
+     */
+    private static List<AddressResponse> modelToAddressResponse(List<AddressModel> addresses) {
+        List<AddressResponse> responseList = new ArrayList<>();
+        addresses.forEach(address -> responseList.add(
+                AddressResponse.builder()
+                        .addressId(address.getAddressId())
+                        .street(address.getStreet())
+                        .city(address.getCity())
+                        .state(address.getState())
+                        .country(address.getCountry())
+                        .addressType(address.getAddressType())
+                        .pincode(address.getPincode())
+                        .build()
+                )
+        );
+    return responseList;
+    }
+
+    /**
+     * Converts a single {@link CustomerModel} entity into a {@link CustomerResponse}
+     * without OTP information. Useful for simple fetch operations.
+     *
+     * @param model the customer entity
+     * @return a {@link CustomerResponse} object containing customer details
+     */
+    public static CustomerResponse toCustomerResponse(CustomerModel model) {
+        return CustomerResponse.builder()
+                .customerId(model.getCustomerId())
+                .firstName(model.getFirstName())
+                .lastName(model.getLastName())
+                .fullName(model.getFullName())
+                .age(model.getAge())
+                .mobileNumber(model.getMobileNumber())
+                .emailAddress(model.getEmailAddress())
+                .status(model.getStatus())
+                .createdDate(model.getCreatedDate())
+                .updatedDate(model.getUpdatedDate())
+                .addresses(modelToAddressResponse(model.getAddress()))
                 .build();
     }
 }
